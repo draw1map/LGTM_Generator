@@ -2,7 +2,6 @@ import os
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 import argparse
 from dataclasses import dataclass
-import ast
 
 
 @dataclass
@@ -17,21 +16,18 @@ class ImageOptions:
     output_path: str = None
 
 
-def parse_color(color_str: str) -> tuple | ValueError:
+def parse_color(color_str: str) -> tuple:
     """文字列として渡された色情報 color をRGB形式に変換"""
-    try:
-        # RGBタプル形式の場合
-        if color_str.startswith("(") and color_str.endswith(")"):
-            # 文字列をタプルに変換
-            return ast.literal_eval(color_str)
-        # 16進数カラーコードの場合
-        elif color_str.startswith("#") or color_str.isalpha():
-            # カラーコードまたは名前をRGBに変換
-            return ImageColor.getrgb(color_str)
-        else:
-            raise ValueError(f"Invalid color format: {color_str}")
-    except Exception as e:
-        raise ValueError(f"Invalid color format: {color_str}. Error: {e}")
+    # RGB tupleの場合
+    if color_str.startswith("(") and color_str.endswith(")"):
+        try:
+            color_tuple = tuple(map(int, color_str[1:-1].split(",")))
+            if len(color_tuple) == 3 and all(0 <= v <= 255 for v in color_tuple):
+                return color_tuple
+        except ValueError:
+            raise ValueError(f"Invalid RGB color format: {color_str}")
+    # それ以外(カラーコード、カラー文字)はImageColorで処理
+    return ImageColor.getrgb(color_str)
 
 
 def add_lgtm_to_image(
@@ -60,9 +56,7 @@ def add_lgtm_to_image(
             options.font_size,
         )
     except IOError:
-        print(
-            f"Warning: Font '{options.font_path}' not found. Using default font 'arial.ttf'."
-        )
+        print(f"Warning: Font '{options.font_path}' not found. Using default font.")
         font = ImageFont.load_default()
 
     # テキストのサイズを計算
