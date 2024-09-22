@@ -52,9 +52,7 @@ def add_lgtm_to_image(
             options.font_size,
         )
     except IOError:
-        print(
-            f"Warning: Font '{options.font_path}' not found. Using default font 'arial.ttf'."
-        )
+        print(f"Warning: Font '{options.font_path}' not found. Using default font.")
         font = ImageFont.load_default()
 
     # テキストのサイズを計算
