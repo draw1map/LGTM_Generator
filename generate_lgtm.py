@@ -17,7 +17,7 @@ class ImageOptions:
     output_path: str = None
 
 
-def parse_color(color_str: str) -> tuple | ValueError:
+def parse_color(color_str: str) -> tuple:
     """文字列として渡された色情報 color をRGB形式に変換"""
     try:
         # RGBタプル形式の場合
