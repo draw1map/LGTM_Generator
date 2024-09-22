@@ -1,7 +1,8 @@
 import os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 import argparse
 from dataclasses import dataclass
+import ast
 
 
 @dataclass
@@ -12,7 +13,24 @@ class ImageOptions:
     text_x: int = None
     text_y: int = None
     output_path: str = None
-    text_color: str = "white"
+    text_color: tuple = (255, 255, 255)
+
+
+def parse_color(color_str: str) -> tuple | ValueError:
+    """文字列として渡された色情報 color をRGB形式に変換"""
+    try:
+        # RGBタプル形式の場合
+        if color_str.startswith("(") and color_str.endswith(")"):
+            # 文字列をタプルに変換
+            return ast.literal_eval(color_str)
+        # 16進数カラーコードの場合
+        elif color_str.startswith("#") or color_str.isalpha():
+            # カラーコードまたは名前をRGBに変換
+            return ImageColor.getrgb(color_str)
+        else:
+            raise ValueError(f"Invalid color format: {color_str}")
+    except Exception as e:
+        raise ValueError(f"Invalid color format: {color_str}. Error: {e}")
 
 
 def add_lgtm_to_image(
@@ -28,13 +46,22 @@ def add_lgtm_to_image(
 
     # フォントとサイズを設定
     try:
-        font = ImageFont.truetype(options.font_path, options.font_size)
+        font = ImageFont.truetype(
+            options.font_path,
+            options.font_size,
+        )
     except IOError:
-        print(f"Warning: Font '{options.font_path}' not found. Using default font.")
+        print(
+            f"Warning: Font '{options.font_path}' not found. Using default font 'arial.ttf'."
+        )
         font = ImageFont.load_default()
 
     # テキストのサイズを計算
-    bbox = draw.textbbox((0, 0), options.text, font=font)
+    bbox = draw.textbbox(
+        xy=(0, 0),
+        text=options.text,
+        font=font,
+    )
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
 
@@ -45,7 +72,12 @@ def add_lgtm_to_image(
     )
 
     # テキストを追加（文字色を設定）
-    draw.text((text_x, text_y), options.text, font=font, fill=options.text_color)
+    draw.text(
+        xy=(text_x, text_y),
+        text=options.text,
+        font=font,
+        fill=options.text_color,
+    )
 
     # 画像を保存
     output_path = (
@@ -109,7 +141,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # ImageOptionsオブジェクトを作成し、引数を設定
+    # 色指定をtupleに変換
+    text_color = parse_color(args.color)
+
+    # ImageOptionsオブジェクトで引数を設定
     options = ImageOptions(
         text=args.text,
         font_path=args.font,
@@ -117,7 +152,7 @@ if __name__ == "__main__":
         text_x=args.x,
         text_y=args.y,
         output_path=args.output,
-        text_color=args.color,
+        text_color=text_color,
     )
 
     # メソッドで画像処理
