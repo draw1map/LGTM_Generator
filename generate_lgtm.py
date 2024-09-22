@@ -10,11 +10,11 @@ class ImageOptions:
     text: str = "LGTM"
     font_path: str = "arial.ttf"
     font_size: int = 50
+    text_color: tuple = (255, 255, 255)
+    position: str = "center"
     text_x: int = None
     text_y: int = None
     output_path: str = None
-    text_color: tuple = (255, 255, 255)
-    position: str = "center"
 
 
 def parse_color(color_str: str) -> tuple | ValueError:
@@ -101,57 +101,69 @@ def add_lgtm_to_image(
 
 if __name__ == "__main__":
     # argparseでコマンドライン引数を解析
-    parser = argparse.ArgumentParser(description="Add text 'LGTM' to selected image.")
+    parser = argparse.ArgumentParser(
+        description="Add text 'LGTM' to selected image.",
+        usage="%(prog)s image_path [options]",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    # 必須の引数(ファイルパス)
     parser.add_argument(
         "image_path",
         help="The path to the image file",
     )
+
+    # テキスト関連のオプション
     parser.add_argument(
         "--text",
         "-t",
         default="LGTM",
-        help="The text to add to the image (default: LGTM)",
+        help="The text to add to the image",
     )
     parser.add_argument(
         "--font",
         "-f",
         default="arial.ttf",
-        help="The font file to use (default: arial.ttf)",
+        help="The font file to use",
     )
     parser.add_argument(
         "--size",
         "-s",
         type=int,
         default=50,
-        help="The font size of the text (default: 50)",
-    )
-    parser.add_argument(
-        "--x",
-        type=int,
-        help="The x position of the text (default: center)",
-    )
-    parser.add_argument(
-        "--y",
-        type=int,
-        help="The y position of the text (default: center)",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        help="The output file path (default: same as input with '_lgtm' suffix)",
+        help="The font size of the text",
     )
     parser.add_argument(
         "--color",
         "-c",
         default="white",
-        help="The color of the text (default: white)",
+        help="The color of the text",
     )
     parser.add_argument(
         "--position",
         "-p",
         choices=["top", "bottom", "center"],
         default="center",
-        help="Position of the text (top, bottom, center). Default is center.",
+        help="Position of the text (top, bottom, center).",
+    )
+
+    # テキストの位置指定用のオプション
+    parser.add_argument(
+        "--x",
+        type=int,
+        help="The x position of the text",
+    )
+    parser.add_argument(
+        "--y",
+        type=int,
+        help="The y position of the text",
+    )
+
+    # 出力関連のオプション
+    parser.add_argument(
+        "--output",
+        "-o",
+        help="The output file path. default output filename is same as input with '_lgtm' suffix.",
     )
 
     args = parser.parse_args()
@@ -164,11 +176,11 @@ if __name__ == "__main__":
         text=args.text,
         font_path=args.font,
         font_size=args.size,
+        text_color=text_color,
+        position=args.position,
         text_x=args.x,
         text_y=args.y,
         output_path=args.output,
-        text_color=text_color,
-        position=args.position,
     )
 
     # メソッドで画像処理
