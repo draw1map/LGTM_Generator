@@ -93,7 +93,25 @@ def add_lgtm_to_image(
         if options.output_path
         else f"{os.path.splitext(image_path)[0]}_lgtm.jpg"
     )
-    image.save(output_path, "JPEG")
+
+    # 拡張子に基づいて保存形式を指定
+    output_extension = os.path.splitext(image_path)[1].lower()
+
+    # JPEGの場合のみqualityを指定
+    output_path = (
+        options.output_path
+        if options.output_path
+        else f"{os.path.splitext(image_path)[0]}_lgtm{output_extension}"
+    )
+
+    if output_extension in [".jpg", ".jpeg"]:
+        image.save(output_path, "JPEG", quality=95)
+    elif output_extension == ".png":
+        image.save(output_path, "PNG")
+    else:
+        print(f"Unsupported format: {output_extension}. Saving as JPEG.")
+        image.save(output_path, "JPEG", quality=95)
+
     print(
         f"Successfully generated the image with text '{options.text}'. \nOutput path: {output_path}"
     )
