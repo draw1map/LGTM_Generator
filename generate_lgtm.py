@@ -39,7 +39,15 @@ def add_lgtm_to_image(
     options: ImageOptions,
 ):
     # 画像を開く
-    image = Image.open(image_path).convert("RGB")
+    output_extension = os.path.splitext(image_path)[1].lower()
+
+    # PNG画像ならRGBA、それ以外はRGBに変換
+    if output_extension == ".png":
+        # PNGの場合は透明度を保持する（背景透過などを保持するため）
+        image = Image.open(image_path).convert("RGBA")
+    else:
+        image = Image.open(image_path).convert("RGB")
+
     draw = ImageDraw.Draw(image)
 
     # 画像のサイズを取得
@@ -87,30 +95,26 @@ def add_lgtm_to_image(
         fill=options.text_color,
     )
 
-    # 画像を保存
-    output_path = (
-        options.output_path
-        if options.output_path
-        else f"{os.path.splitext(image_path)[0]}_lgtm.jpg"
-    )
-
-    # 拡張子に基づいて保存形式を指定
-    output_extension = os.path.splitext(image_path)[1].lower()
-
-    # JPEGの場合のみqualityを指定
+    # 画像の保存
     output_path = (
         options.output_path
         if options.output_path
         else f"{os.path.splitext(image_path)[0]}_lgtm{output_extension}"
     )
 
+    # 拡張子に基づいて保存形式を指定
     if output_extension in [".jpg", ".jpeg"]:
+        image = image.convert("RGB")
         image.save(output_path, "JPEG", quality=95)
     elif output_extension == ".png":
         image.save(output_path, "PNG")
     else:
         print(f"Unsupported format: {output_extension}. Saving as JPEG.")
-        image.save(output_path, "JPEG", quality=95)
+        image.save(
+            output_path,
+            "JPEG",
+            quality=95,
+        )
 
     print(
         f"Successfully generated the image with text '{options.text}'. \nOutput path: {output_path}"
