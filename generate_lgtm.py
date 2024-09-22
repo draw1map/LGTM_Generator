@@ -14,6 +14,7 @@ class ImageOptions:
     text_y: int = None
     output_path: str = None
     text_color: tuple = (255, 255, 255)
+    position: str = "center"
 
 
 def parse_color(color_str: str) -> tuple | ValueError:
@@ -67,9 +68,16 @@ def add_lgtm_to_image(
 
     # テキストの位置を計算
     text_x = options.text_x if options.text_x is not None else (width - text_width) / 2
-    text_y = (
-        options.text_y if options.text_y is not None else (height - text_height) / 2
-    )
+
+    # `--position` オプションに基づいてY座標を計算
+    if options.position == "top":
+        text_y = 10
+    elif options.position == "bottom":
+        text_y = height - text_height - 25
+    else:
+        text_y = (
+            options.text_y if options.text_y is not None else (height - text_height) / 2
+        )
 
     # テキストを追加（文字色を設定）
     draw.text(
@@ -138,6 +146,13 @@ if __name__ == "__main__":
         default="white",
         help="The color of the text (default: white)",
     )
+    parser.add_argument(
+        "--position",
+        "-p",
+        choices=["top", "bottom", "center"],
+        default="center",
+        help="Position of the text (top, bottom, center). Default is center.",
+    )
 
     args = parser.parse_args()
 
@@ -153,6 +168,7 @@ if __name__ == "__main__":
         text_y=args.y,
         output_path=args.output,
         text_color=text_color,
+        position=args.position,
     )
 
     # メソッドで画像処理
