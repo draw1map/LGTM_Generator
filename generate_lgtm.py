@@ -2,7 +2,6 @@ import os
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 import argparse
 from dataclasses import dataclass
-import ast
 
 
 @dataclass
@@ -17,21 +16,18 @@ class ImageOptions:
     output_path: str = None
 
 
-def parse_color(color_str: str) -> tuple | ValueError:
+def parse_color(color_str: str) -> tuple:
     """文字列として渡された色情報 color をRGB形式に変換"""
-    try:
-        # RGBタプル形式の場合
-        if color_str.startswith("(") and color_str.endswith(")"):
-            # 文字列をタプルに変換
-            return ast.literal_eval(color_str)
-        # 16進数カラーコードの場合
-        elif color_str.startswith("#") or color_str.isalpha():
-            # カラーコードまたは名前をRGBに変換
-            return ImageColor.getrgb(color_str)
-        else:
-            raise ValueError(f"Invalid color format: {color_str}")
-    except Exception as e:
-        raise ValueError(f"Invalid color format: {color_str}. Error: {e}")
+    # RGB tupleの場合
+    if color_str.startswith("(") and color_str.endswith(")"):
+        try:
+            color_tuple = tuple(map(int, color_str[1:-1].split(",")))
+            if len(color_tuple) == 3 and all(0 <= v <= 255 for v in color_tuple):
+                return color_tuple
+        except ValueError:
+            raise ValueError(f"Invalid RGB color format: {color_str}")
+    # それ以外(カラーコード、カラー文字)はImageColorで処理
+    return ImageColor.getrgb(color_str)
 
 
 def add_lgtm_to_image(
@@ -39,7 +35,15 @@ def add_lgtm_to_image(
     options: ImageOptions,
 ):
     # 画像を開く
-    image = Image.open(image_path).convert("RGB")
+    output_extension = os.path.splitext(image_path)[1].lower()
+
+    # PNG画像ならRGBA、それ以外はRGBに変換
+    if output_extension == ".png":
+        # PNGの場合は透明度を保持する（背景透過などを保持するため）
+        image = Image.open(image_path).convert("RGBA")
+    else:
+        image = Image.open(image_path).convert("RGB")
+
     draw = ImageDraw.Draw(image)
 
     # 画像のサイズを取得
@@ -52,9 +56,7 @@ def add_lgtm_to_image(
             options.font_size,
         )
     except IOError:
-        print(
-            f"Warning: Font '{options.font_path}' not found. Using default font 'arial.ttf'."
-        )
+        print(f"Warning: Font '{options.font_path}' not found. Using default font.")
         font = ImageFont.load_default()
 
     # テキストのサイズを計算
@@ -87,13 +89,27 @@ def add_lgtm_to_image(
         fill=options.text_color,
     )
 
-    # 画像を保存
+    # 画像の保存
     output_path = (
         options.output_path
         if options.output_path
-        else f"{os.path.splitext(image_path)[0]}_lgtm.jpg"
+        else f"{os.path.splitext(image_path)[0]}_lgtm{output_extension}"
     )
-    image.save(output_path, "JPEG")
+
+    # 拡張子に基づいて保存形式を指定
+    if output_extension in [".jpg", ".jpeg"]:
+        image = image.convert("RGB")
+        image.save(output_path, "JPEG", quality=95)
+    elif output_extension == ".png":
+        image.save(output_path, "PNG")
+    else:
+        print(f"Unsupported format: {output_extension}. Saving as JPEG.")
+        image.save(
+            output_path,
+            "JPEG",
+            quality=95,
+        )
+
     print(
         f"Successfully generated the image with text '{options.text}'. \nOutput path: {output_path}"
     )
