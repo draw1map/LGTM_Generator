@@ -1,7 +1,18 @@
 import os
+import json
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 import argparse
 from dataclasses import dataclass
+
+SETTINGS_FILE = "settings.json"
+
+
+def load_settings():
+    """設定ファイル (settings.json) から設定を読み込む"""
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
 
 @dataclass
@@ -17,17 +28,11 @@ class ImageOptions:
 
 
 def parse_color(color_str: str) -> tuple:
-    """文字列として渡された色情報 color をRGB形式に変換"""
-    # RGB tupleの場合
-    if color_str.startswith("(") and color_str.endswith(")"):
-        try:
-            color_tuple = tuple(map(int, color_str[1:-1].split(",")))
-            if len(color_tuple) == 3 and all(0 <= v <= 255 for v in color_tuple):
-                return color_tuple
-        except ValueError:
-            raise ValueError(f"Invalid RGB color format: {color_str}")
-    # それ以外(カラーコード、カラー文字)はImageColorで処理
-    return ImageColor.getrgb(color_str)
+    """文字列の色指定をRGBタプルに変換"""
+    try:
+        return ImageColor.getrgb(color_str)
+    except ValueError:
+        raise ValueError(f"Invalid color format: {color_str}")
 
 
 def add_lgtm_to_image(
@@ -36,14 +41,9 @@ def add_lgtm_to_image(
 ):
     # 画像を開く
     output_extension = os.path.splitext(image_path)[1].lower()
-
-    # PNG画像ならRGBA、それ以外はRGBに変換
-    if output_extension == ".png":
-        # PNGの場合は透明度を保持する（背景透過などを保持するため）
-        image = Image.open(image_path).convert("RGBA")
-    else:
-        image = Image.open(image_path).convert("RGB")
-
+    image = Image.open(image_path).convert(
+        "RGBA" if output_extension == ".png" else "RGB"
+    )
     draw = ImageDraw.Draw(image)
 
     # 画像のサイズを取得
@@ -51,156 +51,66 @@ def add_lgtm_to_image(
 
     # フォントとサイズを設定
     try:
-        font = ImageFont.truetype(
-            options.font_path,
-            options.font_size,
-        )
+        font = ImageFont.truetype(options.font_path, options.font_size)
     except IOError:
         print(f"Warning: Font '{options.font_path}' not found. Using default font.")
         font = ImageFont.load_default()
 
-    # テキストのサイズを計算
-    bbox = draw.textbbox(
-        xy=(0, 0),
-        text=options.text,
-        font=font,
-    )
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-
-    # テキストの位置を計算
+    bbox = draw.textbbox((0, 0), options.text, font=font)
+    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
     text_x = options.text_x if options.text_x is not None else (width - text_width) / 2
-
-    # `--position` オプションに基づいてY座標を計算
-    if options.position == "top":
-        text_y = 10
-    elif options.position == "bottom":
-        text_y = height - text_height - 25
-    else:
-        text_y = (
-            options.text_y if options.text_y is not None else (height - text_height) / 2
+    text_y = (
+        options.text_y
+        if options.text_y is not None
+        else (
+            10
+            if options.position == "top"
+            else height - text_height - 25
+            if options.position == "bottom"
+            else (height - text_height) / 2
         )
-
-    # テキストを追加（文字色を設定）
-    draw.text(
-        xy=(text_x, text_y),
-        text=options.text,
-        font=font,
-        fill=options.text_color,
     )
 
-    # 画像の保存
+    draw.text((text_x, text_y), options.text, font=font, fill=options.text_color)
+
+    # 画像を保存
     output_path = (
         options.output_path
-        if options.output_path
-        else f"{os.path.splitext(image_path)[0]}_lgtm{output_extension}"
+        or f"{os.path.splitext(image_path)[0]}_lgtm{output_extension}"
     )
+    image.save(output_path, "PNG" if output_extension == ".png" else "JPEG", quality=95)
 
-    # 拡張子に基づいて保存形式を指定
-    if output_extension in [".jpg", ".jpeg"]:
-        image = image.convert("RGB")
-        image.save(output_path, "JPEG", quality=95)
-    elif output_extension == ".png":
-        image.save(output_path, "PNG")
-    else:
-        print(f"Unsupported format: {output_extension}. Saving as JPEG.")
-        image.save(
-            output_path,
-            "JPEG",
-            quality=95,
-        )
-
-    print(
-        f"Successfully generated the image with text '{options.text}'. \nOutput path: {output_path}"
-    )
+    print(f"Image saved at {output_path}")
 
 
 if __name__ == "__main__":
-    # argparseでコマンドライン引数を解析
-    parser = argparse.ArgumentParser(
-        description="Add text 'LGTM' to selected image.",
-        usage="%(prog)s image_path [options]",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    # 必須の引数(ファイルパス)
+    # コマンドライン引数を受け取る
+    parser = argparse.ArgumentParser(description="Add text 'LGTM' to an image.")
+    parser.add_argument("image_path", help="Path to the image file")
+    parser.add_argument("--text", "-t", help="Text to add")
+    parser.add_argument("--font", "-f", help="Font file")
+    parser.add_argument("--size", "-s", type=int, help="Font size")
+    parser.add_argument("--color", "-c", help="Text color")
     parser.add_argument(
-        "image_path",
-        help="The path to the image file",
+        "--position", "-p", choices=["top", "bottom", "center"], help="Text position"
     )
-
-    # テキスト関連のオプション
-    parser.add_argument(
-        "--text",
-        "-t",
-        default="LGTM",
-        help="The text to add to the image",
-    )
-    parser.add_argument(
-        "--font",
-        "-f",
-        default="arial.ttf",
-        help="The font file to use",
-    )
-    parser.add_argument(
-        "--size",
-        "-s",
-        type=int,
-        default=50,
-        help="The font size of the text",
-    )
-    parser.add_argument(
-        "--color",
-        "-c",
-        default="white",
-        help="The color of the text",
-    )
-    parser.add_argument(
-        "--position",
-        "-p",
-        choices=["top", "bottom", "center"],
-        default="center",
-        help="Position of the text (top, bottom, center).",
-    )
-
-    # テキストの位置指定用のオプション
-    parser.add_argument(
-        "--x",
-        type=int,
-        help="The x position of the text",
-    )
-    parser.add_argument(
-        "--y",
-        type=int,
-        help="The y position of the text",
-    )
-
-    # 出力関連のオプション
-    parser.add_argument(
-        "--output",
-        "-o",
-        help="The output file path. default output filename is same as input with '_lgtm' suffix.",
-    )
-
+    parser.add_argument("--x", type=int, help="Text X position")
+    parser.add_argument("--y", type=int, help="Text Y position")
+    parser.add_argument("--output", "-o", help="Output file path")
     args = parser.parse_args()
 
-    # 色指定をtupleに変換
-    text_color = parse_color(args.color)
-
-    # ImageOptionsオブジェクトで引数を設定
+    # settings.json から設定を読み込む
+    settings = load_settings()
     options = ImageOptions(
-        text=args.text,
-        font_path=args.font,
-        font_size=args.size,
-        text_color=text_color,
-        position=args.position,
-        text_x=args.x,
-        text_y=args.y,
-        output_path=args.output,
+        text=args.text or settings.get("text", "LGTM"),
+        font_path=args.font or settings.get("font_path", "arial.ttf"),
+        font_size=args.size or settings.get("font_size", 50),
+        text_color=parse_color(args.color)
+        if args.color
+        else parse_color(settings.get("text_color", "white")),
+        position=args.position or settings.get("position", "center"),
+        text_x=args.x if args.x is not None else settings.get("text_x"),
+        text_y=args.y if args.y is not None else settings.get("text_y"),
+        output_path=args.output or settings.get("output_path"),
     )
-
-    # メソッドで画像処理
-    add_lgtm_to_image(
-        args.image_path,
-        options,
-    )
+    add_lgtm_to_image(args.image_path, options)
