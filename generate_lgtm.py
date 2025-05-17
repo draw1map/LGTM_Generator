@@ -15,6 +15,7 @@ class ImageOptions:
     font_size: str = "50"
     text_color: tuple = (255, 255, 255)
     outline_color: tuple = None
+    outline_width: int = 2
     position: str = "center"
     text_x: str = None
     text_y: str = None
@@ -149,14 +150,16 @@ def add_lgtm_to_image(image_path, options: ImageOptions):
 
     # アウトラインの描画
     if options.outline_color:
-        outline_offsets = [(-2, -2), (-2, 2), (2, -2), (2, 2)]
-        for offset in outline_offsets:
-            draw.text(
-                (text_x + offset[0], text_y + offset[1]),
-                options.text,
-                font=font,
-                fill=options.outline_color,
-            )
+        for x_offset in range(-options.outline_width, options.outline_width + 1):
+            for y_offset in range(-options.outline_width, options.outline_width + 1):
+                if x_offset == 0 and y_offset == 0:
+                    continue
+                draw.text(
+                    (text_x + x_offset, text_y + y_offset),
+                    options.text,
+                    font=font,
+                    fill=options.outline_color,
+                )
 
     # メインテキストを描画
     draw.text((text_x, text_y), options.text, font=font, fill=options.text_color)
@@ -186,7 +189,14 @@ if __name__ == "__main__":
         "--size", "-s", default="50", help="フォントサイズ (ピクセル または 'pct')"
     )
     parser.add_argument("--color", "-c", default="white", help="テキストの色")
-    parser.add_argument("--outline", "-ol", help="テキストのアウトライン色")
+    parser.add_argument("--outline-color", "-oc", help="テキストのアウトライン色")
+    parser.add_argument(
+        "--outline-width",
+        "-ow",
+        type=int,
+        default=2,
+        help="アウトラインの太さ（ピクセル）",
+    )
     parser.add_argument(
         "--position",
         "-p",
@@ -207,7 +217,8 @@ if __name__ == "__main__":
         font_path=args.font,
         font_size=args.size,
         text_color=parse_color(args.color),
-        outline_color=parse_color(args.outline),
+        outline_color=parse_color(args.outline_color),
+        outline_width=args.outline_width,
         position=args.position,
         text_x=args.x,
         text_y=args.y,
