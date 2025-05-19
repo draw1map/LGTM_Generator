@@ -10,11 +10,13 @@
 - **テキストのアウトライン（縁取り）**
 - **座標やフォントサイズをパーセント指定可能**
 - **JPEG/PNG の保存対応**
+- **OSに応じたデフォルトフォントの自動選択**
+- **画像の検証とエラーハンドリング**
 
 ---
 
 ## **🔧 事前準備**
-- Python **3.11.9** 以上
+- Python 3.x
 - 必要なライブラリをインストール（Pillow など）
 
 ```bash
@@ -52,7 +54,8 @@ python generate_lgtm.py example.png -t "Hello" -f "Arial.ttf" -s 10pct -c "#FF00
 | `--font`            | `-f`  | 使用するフォントファイルを指定 |
 | `--size`            | `-s`  | **フォントサイズを指定**（px または `pct` で相対指定可）|
 | `--color`           | `-c`  | **テキストの色**（RGB, カラーコード, 色名対応） |
-| `--outline`         | `-ol` | **アウトライン色を指定**（RGB, カラーコード, 色名対応）|
+| `--outline-color`   | `-oc` | **アウトライン色を指定**（RGB, カラーコード, 色名対応）|
+| `--outline-width`   | `-ow` | **アウトラインの太さ**（ピクセル単位、デフォルト: 2）|
 | `--position`        | `-p`  | **テキストの縦方向の配置**（`top`, `bottom`, `center`）|
 | `--x`              | `-x`  | **X座標を指定**（px または `pct` で相対指定可） |
 | `--y`              | `-y`  | **Y座標を指定**（px または `pct` で相対指定可） |
@@ -87,14 +90,23 @@ python generate_lgtm.py example.png -r 800x600
 
 ### **3️⃣ テキストのアウトライン**
 ```bash
-python generate_lgtm.py example.png -ol black
+python generate_lgtm.py example.png -oc black -ow 2
 ```
-- **黒色のアウトラインを追加**
+- **黒色のアウトラインを追加（太さ: 2ピクセル）**
 
 ```bash
-python generate_lgtm.py example.png -ol "(255,255,0)"
+python generate_lgtm.py example.png -oc "(255,255,0)" -ow 3
 ```
-- **黄色 `(255,255,0)` のアウトラインを追加**
+- **黄色 `(255,255,0)` のアウトラインを追加（太さ: 3ピクセル）**
+
+---
+
+## **⚠️ 制限事項**
+- リサイズ後の画像サイズは最小10x10ピクセル、最大10000x10000ピクセル
+- フォントファイルが見つからない場合は、OSに応じたデフォルトフォントを使用
+  - Windows: Arial
+  - macOS: Helvetica
+  - Linux: DejaVu Sans
 
 ---
 
@@ -106,7 +118,7 @@ python generate_lgtm.py example.png -ol "(255,255,0)"
 
 **コマンド**
 ```bash
-python generate_lgtm.py sample.jpg -s 30pct -ol black
+python generate_lgtm.py sample.jpg -s 30pct -oc black -ow 2
 ```
 
 **出力されたLGTM画像**
